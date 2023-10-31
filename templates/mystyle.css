@@ -1,0 +1,10 @@
+.btn-sm {
+    width: auto; 
+    padding: 5px 15px; 
+    font-size: 16px; 
+  }
+  
+  /* Кнопка центрируется внутри .d-grid */
+  .g-grid {
+    text-align: center;
+  }

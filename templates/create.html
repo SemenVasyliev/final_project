@@ -1,0 +1,26 @@
+{{ define "create" }}
+{{ template "header" }}
+
+<main class="text-center" style="padding-top: 100px;">
+    <h1 class="cover-heading">Adding article</h1>
+    <form action="/save_article" method="post" class="article-form mx-auto" style="max-width: 800px;">
+      <div class="mb-3">
+        <input type="text" name="title" id="title" placeholder="Article title" class="form-control">
+      </div>
+      <div class="mb-3">
+        <input type="text" name="description" id="description" placeholder="What is your article about?" class="form-control">
+      </div>
+      <div class="mb-3">
+        <textarea name="articleText" id="articleText" cols="30" rows="10" class="form-control" placeholder="Write your article"></textarea>
+      </div>
+      <div class="mb-3">
+        <textarea name="tags" id="tags" class="form-control" placeholder="Tags"></textarea>
+      </div>
+      <div class="g-grid">
+        <button class="btn btn-warning btn-lg">Publish article</button>
+      </div>
+    </form>
+  </main>
+</main>
+{{ template "footer" }}
+{{ end }}
