@@ -132,7 +132,7 @@ func show_post(w http.ResponseWriter, r *http.Request) {
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("templates/login.html", "templates/header.html", "templates/footer.html")
+	t, err := template.ParseFiles("templates/login.html", "templates/header.html")
 	if err != nil {
 		panic(err)
 	}
@@ -140,15 +140,25 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func register(w http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles("templates/register.html", "templates/header.html")
+	if err != nil {
+		panic(err)
+	}
+	t.ExecuteTemplate(w, "register", nil)
+
+}
+
 func handleFunc() {
 	rtr := mux.NewRouter()
+	http.Handle("/", rtr)
+
 	rtr.HandleFunc("/", index).Methods("GET")
 	rtr.HandleFunc("/create", create).Methods("GET")
 	rtr.HandleFunc("/save_article", save_article).Methods("POST")
 	rtr.HandleFunc("/post/{id:[0-9]+}", show_post).Methods("GET") // ,"POST"
 	rtr.HandleFunc("/login", login).Methods("GET")
-
-	http.Handle("/", rtr)
+	rtr.HandleFunc("/register", register).Methods("GET")
 
 	http.ListenAndServe(":8081", nil)
 

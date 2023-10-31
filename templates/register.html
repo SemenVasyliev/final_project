@@ -1,4 +1,4 @@
-{{ define "login" }}
+{{ define "register" }}
 {{ template "header" }}
 
 <body>
@@ -24,24 +24,30 @@
         <main class="form-signin text-center" style="max-width: 330px; margin: 0 auto; margin-top: 20vh;">
             <form>
                 <img class="mb-4" src="https://media.licdn.com/dms/image/D4E0BAQGsFssKcyGo2w/company-logo_200_200/0/1657188113641/dreamdriven_logo?e=2147483647&v=beta&t=yiH0AObcg5ATxI1s3FpLDaEPkQmW_sL2kxP9BOuFJcI" alt="DreamDriven" width="80" height="80">
-                <h1 class="h3 mb-3 fw-normal">Please sign in</h1>
-        
+                <h1 class="h3 mb-3 fw-normal">Please register</h1>
+
+                <div class="form-floating">
+                    <input type="name" class="form-control" id="floatingInput" placeholder="Name">
+                    <label for="floatingInput">Name</label>
+                </div>
+
                 <div class="form-floating">
                     <input type="email" class="form-control" id="floatingInput" placeholder="name@example.com">
                     <label for="floatingInput">Email address</label>
                 </div>
+
                 <div class="form-floating">
                     <input type="password" class="form-control" id="floatingPassword" placeholder="Password">
                     <label for="floatingPassword">Password</label>
                 </div>
         
-                <div class="form-check text-start my-3">
+                <!-- <div class="form-check text-start my-3">
                     <input class="form-check-input" type="checkbox" value="remember-me" id="flexCheckDefault">
                     <label class="form-check-label" for="flexCheckDefault">
                         Remember me
                     </label>
-                </div>
-                <button class="btn btn-primary w-100 py-2" type="submit">Sign in</button>
+                </div> -->
+                <button class="btn btn-primary w-100 py-2" type="submit">Register</button>
             </form>
         </main>
     <script src="../assets/dist/js/bootstrap.bundle.min.js"></script>
@@ -49,8 +55,3 @@
         </body>
 </html>
 {{ end }}
-
-
-
-
-
