@@ -7,7 +7,16 @@ import (
 	"net/http"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gorilla/mux"
 )
+
+type Article struct {
+	Id                                    int
+	Title, Description, ArticleText, Tags string
+}
+
+var posts = []Article{}
+var showPost = Article{}
 
 func index(w http.ResponseWriter, r *http.Request) {
 	// connect files
@@ -17,13 +26,39 @@ func index(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, err.Error())
 	}
 
-	t.ExecuteTemplate(w, "index", nil)
+	db, err := sql.Open("mysql", "root:220203ctyz@tcp(127.0.0.1:3306)/news")
+	if err != nil {
+		panic(err)
+	}
+
+	defer db.Close()
+
+	res, err := db.Query("SELECT * FROM `articles`")
+	if err != nil {
+		panic(err)
+	}
+
+	// to make articles empty
+	posts = []Article{}
+
+	for res.Next() {
+		var post Article
+		err = res.Scan(&post.Id, &post.Title, &post.Description, &post.ArticleText, &post.Tags)
+		if err != nil {
+			panic(err)
+		}
+
+		posts = append(posts, post)
+	}
+
+	t.ExecuteTemplate(w, "index", posts)
 }
 
 func create(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("templates/create.html", "templates/header.html", "templates/footer.html")
+
 	if err != nil {
-		fmt.Fprintf(w, err.Error())
+		panic(err)
 	}
 
 	t.ExecuteTemplate(w, "create", nil)
@@ -58,11 +93,65 @@ func save_article(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func show_post(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	t, err := template.ParseFiles("templates/show.html", "templates/header.html", "templates/footer.html")
+
+	if err != nil {
+		fmt.Fprintf(w, err.Error())
+	}
+
+	db, err := sql.Open("mysql", "root:220203ctyz@tcp(127.0.0.1:3306)/news")
+	if err != nil {
+		panic(err)
+	}
+
+	defer db.Close()
+
+	// выборка данных
+	res, err := db.Query(fmt.Sprintf("SELECT * FROM `articles` WHERE `id` = '%s'", vars["id"]))
+	if err != nil {
+		panic(err)
+	}
+
+	// to make articles empty
+	showPost = Article{}
+
+	for res.Next() {
+		var post Article
+		err = res.Scan(&post.Id, &post.Title, &post.Description, &post.ArticleText, &post.Tags)
+		if err != nil {
+			panic(err)
+		}
+
+		showPost = post
+	}
+
+	t.ExecuteTemplate(w, "show", showPost)
+
+}
+
+func login(w http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles("templates/login.html", "templates/header.html", "templates/footer.html")
+	if err != nil {
+		panic(err)
+	}
+	t.ExecuteTemplate(w, "login", nil)
+
+}
+
 func handleFunc() {
-	http.HandleFunc("/", index)
-	http.HandleFunc("/create", create)
-	http.HandleFunc("/save_article", save_article)
+	rtr := mux.NewRouter()
+	rtr.HandleFunc("/", index).Methods("GET")
+	rtr.HandleFunc("/create", create).Methods("GET")
+	rtr.HandleFunc("/save_article", save_article).Methods("POST")
+	rtr.HandleFunc("/post/{id:[0-9]+}", show_post).Methods("GET") // ,"POST"
+	rtr.HandleFunc("/login", login).Methods("GET")
+
+	http.Handle("/", rtr)
+
 	http.ListenAndServe(":8081", nil)
+
 }
 
 func main() {

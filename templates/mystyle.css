@@ -8,3 +8,11 @@
   .g-grid {
     text-align: center;
   }
+
+  .alert {
+    text-align: center;
+  }
+
+  a.text-decoration-none {
+    background-color: transparent; /* или background-color: none; */
+  }
