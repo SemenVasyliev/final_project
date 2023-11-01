@@ -23,7 +23,7 @@ type User struct {
 	Name, Password, Email, Token string
 }
 
-var posts = []Article{}
+// var posts = []Article{}
 var showPost = Article{}
 var secretKey string = "220203"
 var isAuthenticated bool
@@ -95,7 +95,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 func create(w http.ResponseWriter, r *http.Request) {
 	if isAuthenticated {
-		t, err := template.ParseFiles("templates/create.html", "templates/header.html", "templates/footer.html")
+		t, err := template.ParseFiles("templates/create.html", "templates/footer.html", "templates/header_for_auth.html")
 
 		if err != nil {
 			panic(err)
@@ -137,7 +137,8 @@ func save_article(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func show_post(w http.ResponseWriter, r *http.Request) {
+func show_post(w http.ResponseWriter, r *http.Request) {	
+
 	vars := mux.Vars(r)
 	t, err := template.ParseFiles("templates/show.html", "templates/header.html", "templates/footer.html")
 
