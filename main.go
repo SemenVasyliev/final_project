@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-
+	// "github.com/gorilla/sessions"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 )
@@ -13,6 +13,11 @@ import (
 type Article struct {
 	Id                                    int
 	Title, Description, ArticleText, Tags string
+}
+
+type User struct {
+	Id                    int
+	Name, Password, Email string
 }
 
 var posts = []Article{}
@@ -146,8 +151,109 @@ func register(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	t.ExecuteTemplate(w, "register", nil)
-
 }
+
+func save_user(w http.ResponseWriter, r *http.Request) {
+
+	name := r.FormValue("name")
+	email := r.FormValue("email")
+	password := r.FormValue("password")
+
+	if name == "" || email == "" || password == "" {
+		fmt.Fprintf(w, "Not all data are filled")
+
+	} else {
+		db, err := sql.Open("mysql", "root:220203ctyz@tcp(127.0.0.1:3306)/news")
+		if err != nil {
+			panic(err)
+		}
+
+		defer db.Close()
+
+		// check email
+		var existingEmail int
+		if err := db.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", email).Scan(&existingEmail); err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+
+		if existingEmail > 0 {
+			http.Redirect(w, r, "/register", http.StatusSeeOther)
+			return
+		}
+
+		// adding to db
+		insert, err := db.Query(fmt.Sprintf("INSERT INTO `users` (`name`, `password`, `email`) VALUES('%s', '%s', '%s')", name, password, email))
+		if err != nil {
+			panic(err)
+		}
+		defer insert.Close()
+
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
+}
+
+func login_user(w http.ResponseWriter, r *http.Request) {
+
+	email := r.FormValue("email")
+	password := r.FormValue("password")
+
+	if email == "" || password == "" {
+		fmt.Fprintf(w, "Not all data are filled")
+
+	} else {
+		db, err := sql.Open("mysql", "root:220203ctyz@tcp(127.0.0.1:3306)/news")
+		if err != nil {
+			panic(err)
+		}
+
+		defer db.Close()
+
+		// check email
+		var existingEmail int
+		var existingPass int
+		if err := db.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", email).Scan(&existingEmail); err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+
+		if existingEmail > 0 {
+			if err := db.QueryRow("SELECT COUNT(*) FROM users WHERE password = ?", password).Scan(&existingPass); err != nil {
+				http.Error(w, "Database error", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		if existingPass < 1 {
+			//http.Redirect(w, r, "/login", http.StatusSeeOther)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
+}
+
+// func sessionCreate(w http.ResponseWriter, r *http.Request, name string) {
+// 	session, err := store.Get(r, "session-name") // Создаем или получаем сессию
+// if err != nil {
+//     http.Error(w, "Session error", http.StatusInternalServerError)
+//     return
+// }
+
+// // Сохраняем информацию в сессии, например, имя пользователя
+// session.Values["user"] = name // Переменную userName необходимо получить после аутентификации
+
+// // Сохраняем сессию
+// err = session.Save(r, w)
+// if err != nil {
+//     http.Error(w, "Session error", http.StatusInternalServerError)
+//     return
+// }
+
+// // Перенаправляем пользователя на страницу с расширенной функциональностью
+// http.Redirect(w, r, "/my_articles", http.StatusSeeOther)
+// }
 
 func handleFunc() {
 	rtr := mux.NewRouter()
@@ -159,6 +265,8 @@ func handleFunc() {
 	rtr.HandleFunc("/post/{id:[0-9]+}", show_post).Methods("GET") // ,"POST"
 	rtr.HandleFunc("/login", login).Methods("GET")
 	rtr.HandleFunc("/register", register).Methods("GET")
+	rtr.HandleFunc("/save_user", save_user).Methods("POST")
+	rtr.HandleFunc("/login_user", login_user).Methods("POST")
 
 	http.ListenAndServe(":8081", nil)
 
