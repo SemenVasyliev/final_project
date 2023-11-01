@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"time"
+
 	// "github.com/gorilla/sessions"
+	"github.com/dgrijalva/jwt-go"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 )
@@ -16,16 +19,40 @@ type Article struct {
 }
 
 type User struct {
-	Id                    int
-	Name, Password, Email string
+	Id                           int
+	Name, Password, Email, Token string
 }
 
 var posts = []Article{}
 var showPost = Article{}
+var secretKey string = "220203"
+var isAuthenticated bool
+
+func CheckAuthentication(tokenString string) bool {
+
+	if tokenString == "" {
+		return false
+	}
+
+	_, err := checkToken(tokenString)
+	if err != nil {
+		fmt.Println(err.Error())
+		return false
+	}
+	return true
+}
 
 func index(w http.ResponseWriter, r *http.Request) {
 	// connect files
-	t, err := template.ParseFiles("templates/index.html", "templates/header.html", "templates/footer.html")
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		isAuthenticated = false
+	} else {
+		token := cookie.Value
+		isAuthenticated = CheckAuthentication(token)
+	}
+
+	t, err := template.ParseFiles("templates/index.html", "templates/header.html", "templates/footer.html", "templates/header_for_auth.html")
 
 	if err != nil {
 		fmt.Fprintf(w, err.Error())
@@ -38,13 +65,20 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 	defer db.Close()
 
+	data := struct {
+		IsAuthenticated bool
+		Article         []Article
+	}{
+		IsAuthenticated: isAuthenticated,
+	}
+
 	res, err := db.Query("SELECT * FROM `articles`")
 	if err != nil {
 		panic(err)
 	}
 
 	// to make articles empty
-	posts = []Article{}
+	data.Article = []Article{}
 
 	for res.Next() {
 		var post Article
@@ -53,20 +87,25 @@ func index(w http.ResponseWriter, r *http.Request) {
 			panic(err)
 		}
 
-		posts = append(posts, post)
+		data.Article = append(data.Article, post)
 	}
 
-	t.ExecuteTemplate(w, "index", posts)
+	t.ExecuteTemplate(w, "index", data)
 }
 
 func create(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("templates/create.html", "templates/header.html", "templates/footer.html")
+	if isAuthenticated {
+		t, err := template.ParseFiles("templates/create.html", "templates/header.html", "templates/footer.html")
 
-	if err != nil {
-		panic(err)
+		if err != nil {
+			panic(err)
+		}
+
+		t.ExecuteTemplate(w, "create", nil)
+	} else {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 	}
 
-	t.ExecuteTemplate(w, "create", nil)
 }
 
 func save_article(w http.ResponseWriter, r *http.Request) {
@@ -222,6 +261,13 @@ func login_user(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Database error", http.StatusInternalServerError)
 				return
 			}
+			cooke := http.Cookie{
+				Name:     "token",
+				Value:    generateToken(email),
+				Expires:  time.Now().Add(24 * time.Hour),
+				HttpOnly: true,
+			}
+			http.SetCookie(w, &cooke)
 		}
 
 		if existingPass < 1 {
@@ -234,26 +280,38 @@ func login_user(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// func sessionCreate(w http.ResponseWriter, r *http.Request, name string) {
-// 	session, err := store.Get(r, "session-name") // Создаем или получаем сессию
-// if err != nil {
-//     http.Error(w, "Session error", http.StatusInternalServerError)
-//     return
-// }
+func generateToken(userEmail string) string {
+	token := jwt.New(jwt.SigningMethodHS256)
 
-// // Сохраняем информацию в сессии, например, имя пользователя
-// session.Values["user"] = name // Переменную userName необходимо получить после аутентификации
+	claims := token.Claims.(jwt.MapClaims)
+	claims["user_email"] = userEmail
+	claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
 
-// // Сохраняем сессию
-// err = session.Save(r, w)
-// if err != nil {
-//     http.Error(w, "Session error", http.StatusInternalServerError)
-//     return
-// }
+	tokenString, err := token.SignedString([]byte(secretKey))
+	if err != nil {
+		panic(err)
+	}
 
-// // Перенаправляем пользователя на страницу с расширенной функциональностью
-// http.Redirect(w, r, "/my_articles", http.StatusSeeOther)
-// }
+	return tokenString
+}
+func checkToken(tokenString string) (jwt.MapClaims, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Проверка метода подписи
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Invalid token signing method")
+		}
+		return []byte(secretKey), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		return claims, nil
+	}
+
+	return nil, fmt.Errorf("Invalid token")
+}
 
 func handleFunc() {
 	rtr := mux.NewRouter()

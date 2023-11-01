@@ -1,5 +1,9 @@
 {{ define "index" }}
-{{ template "header" }}
+{{ if .IsAuthenticated }}
+    {{ template "header" }}
+{{ else }}
+    {{ template "header_for_auth" }}
+{{ end }}
 
 <main>
   <section class="py-5">
@@ -8,7 +12,7 @@
         <div class="col-lg-6 col-md-8 mx-auto">
           <h1 class="fw-light">Articles</h1>
           <p class="lead text-body-secondary">Lorem ipsum dolor, sit amet consectetur adipisicing elit. Iste inventore voluptate harum praesentium fugiat consequuntur magni molestiae adipisci nihil asperiores, hic dolor numquam ducimus expedita id a cupiditate? Possimus, architecto?</p>
-          {{ range . }}
+          {{ range .Article }}
           <div class="alert alert-light text-center my-4">
             <a href="/post/{{ .Id }}" class="text-decoration-none">
               <h2>{{ .Title }}</h2>
