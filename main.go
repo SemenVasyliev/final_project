@@ -33,6 +33,11 @@ type Comment struct {
 	Timestamp time.Time
 }
 
+type ArticleWithAuthor struct {
+	Article
+	AuthorName string
+}
+
 // var posts = []Article{}
 var showPost = Article{}
 var secretKey string = "220203"
@@ -77,22 +82,22 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		IsAuthenticated bool
-		Article         []Article
+		Article         []ArticleWithAuthor
 	}{
 		IsAuthenticated: isAuthenticated,
 	}
 
-	res, err := db.Query("SELECT * FROM `articles`")
+	res, err := db.Query("SELECT articles.*, users.Name AS AuthorName FROM articles INNER JOIN users ON articles.UserId = users.Id")
 	if err != nil {
 		panic(err)
 	}
 
 	// to make articles empty
-	data.Article = []Article{}
+	data.Article = []ArticleWithAuthor{}
 
 	for res.Next() {
-		var post Article
-		err = res.Scan(&post.Id, &post.Title, &post.Description, &post.ArticleText, &post.Tags)
+		var post ArticleWithAuthor
+		err = res.Scan(&post.Id, &post.Title, &post.Description, &post.ArticleText, &post.Tags, &post.UserId, &post.AuthorName)
 		if err != nil {
 			panic(err)
 		}
@@ -174,7 +179,7 @@ func show_post(w http.ResponseWriter, r *http.Request) {
 
 	for res.Next() {
 		var post Article
-		err = res.Scan(&post.Id, &post.Title, &post.Description, &post.ArticleText, &post.Tags)
+		err = res.Scan(&post.Id, &post.Title, &post.Description, &post.ArticleText, &post.Tags, &post.UserId)
 		if err != nil {
 			panic(err)
 		}
@@ -298,13 +303,7 @@ func login_user(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Database error", http.StatusInternalServerError)
 				return
 			}
-			cooke := http.Cookie{
-				Name:     "token",
-				Value:    generateToken(email),
-				Expires:  time.Now().Add(24 * time.Hour),
-				HttpOnly: true,
-			}
-			http.SetCookie(w, &cooke)
+			
 		}
 
 		if existingPass < 1 {
@@ -312,6 +311,13 @@ func login_user(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
+		cooke := http.Cookie{
+				Name:     "token",
+				Value:    generateToken(email),
+				Expires:  time.Now().Add(24 * time.Hour),
+				HttpOnly: true,
+			}
+			http.SetCookie(w, &cooke)
 
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
@@ -349,6 +355,26 @@ func checkToken(tokenString string) (jwt.MapClaims, error) {
 
 	return nil, fmt.Errorf("Invalid token")
 }
+
+// func GetUserIDFromToken(tokenString string) (int, error) {
+// 	claims, err := checkToken(tokenString)
+// 	if err != nil {
+// 		return -1, err // Возвращаем -1 и ошибку в случае проблемы с токеном
+// 	}
+
+// 	// Предполагая, что UserId хранится в токене как строка
+// 	userIdStr, ok := claims["UserId"].(string)
+// 	if !ok {
+// 		return -1, fmt.Errorf("UserId not found in token")
+// 	}
+
+// 	userId, err := strconv.Atoi(userIdStr)
+// 	if err != nil {
+// 		return -1, err
+// 	}
+
+// 	return userId, nil
+// }
 
 func addComment(w http.ResponseWriter, r *http.Request) {
 	if isAuthenticated {
