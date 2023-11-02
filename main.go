@@ -18,6 +18,7 @@ type Article struct {
 	Title, Description, ArticleText, Tags string
 	Comments                              []Comment
 	UserId                                int
+	CreatedAt                             string
 }
 
 type User struct {
@@ -97,7 +98,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 	for res.Next() {
 		var post ArticleWithAuthor
-		err = res.Scan(&post.Id, &post.Title, &post.Description, &post.ArticleText, &post.Tags, &post.UserId, &post.AuthorName)
+		err = res.Scan(&post.Id, &post.Title, &post.Description, &post.ArticleText, &post.Tags, &post.UserId, &post.AuthorName, &post.CreatedAt)
 		if err != nil {
 			panic(err)
 		}
@@ -168,9 +169,9 @@ func save_article(w http.ResponseWriter, r *http.Request) {
 		}
 
 		defer db.Close()
-
+		createdAt := time.Now().Format("2006-01-02 15:04:05")
 		// adding to db
-		insert, err := db.Query(fmt.Sprintf("INSERT INTO `articles` (`title`, `description`, `articleText`, `tags`, `UserId`) VALUES('%s', '%s', '%s', '%s', '%v')", title, description, articleText, tags, intUserId))
+		insert, err := db.Query(fmt.Sprintf("INSERT INTO `articles` (`title`, `description`, `articleText`, `tags`, `UserId`, `CreatedAt`) VALUES('%s', '%s', '%s', '%s', '%v', '%s')", title, description, articleText, tags, intUserId, createdAt))
 		if err != nil {
 			panic(err)
 		}
