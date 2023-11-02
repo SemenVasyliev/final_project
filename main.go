@@ -211,7 +211,7 @@ func show_post(w http.ResponseWriter, r *http.Request) {
 
 	for res.Next() {
 		var post Article
-		err = res.Scan(&post.Id, &post.Title, &post.Description, &post.ArticleText, &post.Tags, &post.UserId)
+		err = res.Scan(&post.Id, &post.Title, &post.Description, &post.ArticleText, &post.Tags, &post.UserId, &post.CreatedAt)
 		if err != nil {
 			panic(err)
 		}
