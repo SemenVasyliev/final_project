@@ -16,11 +16,20 @@ import (
 type Article struct {
 	Id                                    int
 	Title, Description, ArticleText, Tags string
+	Comments                              []Comment
 }
 
 type User struct {
 	Id                           int
 	Name, Password, Email, Token string
+}
+
+type Comment struct {
+	ID        int
+	PostID    int
+	Author    string
+	Text      string
+	Timestamp time.Time
 }
 
 // var posts = []Article{}
@@ -137,7 +146,7 @@ func save_article(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func show_post(w http.ResponseWriter, r *http.Request) {	
+func show_post(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	t, err := template.ParseFiles("templates/show.html", "templates/header.html", "templates/footer.html")
@@ -171,6 +180,32 @@ func show_post(w http.ResponseWriter, r *http.Request) {
 
 		showPost = post
 	}
+
+	comments := []Comment{} // Предположим, у вас есть структура Comment для хранения комментариев
+	commentsQuery := fmt.Sprintf("SELECT * FROM `comments` WHERE `id` = '%s'", vars["id"])
+	commentsResult, err := db.Query(commentsQuery)
+	if err != nil {
+		panic(err)
+	}
+
+	for commentsResult.Next() {
+		var comment Comment
+		var timestampBytes []byte
+		err = commentsResult.Scan(&comment.ID, &comment.PostID, &comment.Author, &comment.Text, &timestampBytes)
+		if err != nil {
+			panic(err)
+		}
+
+		// Преобразование timestampBytes в time.Time
+		comment.Timestamp, err = time.Parse("2006-01-02 15:04:05", string(timestampBytes))
+		if err != nil {
+			panic(err)
+		}
+
+		comments = append(comments, comment)
+	}
+
+	showPost.Comments = comments
 
 	t.ExecuteTemplate(w, "show", showPost)
 
@@ -314,6 +349,37 @@ func checkToken(tokenString string) (jwt.MapClaims, error) {
 	return nil, fmt.Errorf("Invalid token")
 }
 
+func addComment(w http.ResponseWriter, r *http.Request) {
+	if isAuthenticated {
+		postID := r.FormValue("post_id")
+		commentText := r.FormValue("comment_text")
+		author := "CurrentLoggedInUser" // Замените на имя текущего аутентифицированного пользователя
+
+		// Проверка наличия текста комментария
+		if commentText == "" {
+			http.Error(w, "Comment text is required", http.StatusBadRequest)
+			return
+		}
+
+		db, err := sql.Open("mysql", "root:220203ctyz@tcp(127.0.0.1:3306)/news")
+		if err != nil {
+			panic(err)
+		}
+
+		defer db.Close()
+		// Вставка комментария в базу данных
+		_, error := db.Exec("INSERT INTO comments (post_id, author, text, timestamp) VALUES (?, ?, ?, NOW())", postID, author, commentText)
+		if error != nil {
+			http.Error(w, "Failed to add comment", http.StatusInternalServerError)
+			return
+		}
+
+		http.Redirect(w, r, fmt.Sprintf("/post/%s", postID), http.StatusSeeOther)
+	} else {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+	}
+}
+
 func handleFunc() {
 	rtr := mux.NewRouter()
 	http.Handle("/", rtr)
@@ -326,6 +392,7 @@ func handleFunc() {
 	rtr.HandleFunc("/register", register).Methods("GET")
 	rtr.HandleFunc("/save_user", save_user).Methods("POST")
 	rtr.HandleFunc("/login_user", login_user).Methods("POST")
+	rtr.HandleFunc("/add_comment", addComment).Methods("POST")
 
 	http.ListenAndServe(":8081", nil)
 

@@ -13,6 +13,23 @@
         <a href="/" class="btn btn-lg btn-secondary">Back</a>
        </p>
 </main>
+<div class="comments">
+  <h2>Comments</h2>
+  {{range .Comments}}
+  <div class="comment">
+      <p><strong>{{.Author}}:</strong> {{.Text}}</p>
+  </div>
+  {{end}}
+</div>
+<form action="/add_comment" method="POST">
+    <input type="hidden" name="post_id" value="{{.ID}}">
+    <div class="form-group">
+        <label for="comment_text">Add a Comment</label>
+        <textarea class="form-control" name="comment_text" id="comment_text" rows="3" required></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit Comment</button>
+</form>
+<p>Please <a href="/login">login</a> to add comments.</p>
 {{ template "footer" }}
 
 {{ end }}
