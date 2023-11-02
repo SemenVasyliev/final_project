@@ -88,7 +88,10 @@ func index(w http.ResponseWriter, r *http.Request) {
 		IsAuthenticated: isAuthenticated,
 	}
 
-	res, err := db.Query("SELECT articles.*, users.Name AS AuthorName FROM articles INNER JOIN users ON articles.UserId = users.Id")
+	res, err := db.Query(`select a.id, a.title, a.description, a.articleText, a.tags, a.UserId, u.name, a.CreatedAt 
+	from users u 
+	inner join articles a
+	on u.id = a.UserId;`)
 	if err != nil {
 		panic(err)
 	}
