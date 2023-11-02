@@ -130,6 +130,34 @@ func save_article(w http.ResponseWriter, r *http.Request) {
 	articleText := r.FormValue("articleText")
 	tags := r.FormValue("tags")
 
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		// Обработка ошибки, если токен отсутствует
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	tokenString := cookie.Value
+	claims, err := checkToken(tokenString)
+	if err != nil {
+		// Обработка ошибки валидации токена
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	userId, _ := claims["user_id"].(float64)
+	fmt.Println("User id:")
+	fmt.Println(userId)
+	// if !ok {
+	// 	// Обработка ошибки, если UserId не является int
+	// 	fmt.Fprintf(w, "Latif")
+	// 	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	// 	return
+	// }
+	intUserId := int(userId)
+
+	//delete
+	fmt.Println(intUserId)
 	// todo: add a nice check
 	if title == "" || description == "" || articleText == "" {
 		fmt.Fprintf(w, "Not all data are filled")
@@ -142,7 +170,7 @@ func save_article(w http.ResponseWriter, r *http.Request) {
 		defer db.Close()
 
 		// adding to db
-		insert, err := db.Query(fmt.Sprintf("INSERT INTO `articles` (`title`, `description`, `articleText`, `tags`) VALUES('%s', '%s', '%s', '%s')", title, description, articleText, tags))
+		insert, err := db.Query(fmt.Sprintf("INSERT INTO `articles` (`title`, `description`, `articleText`, `tags`, `UserId`) VALUES('%s', '%s', '%s', '%s', '%v')", title, description, articleText, tags, intUserId))
 		if err != nil {
 			panic(err)
 		}
@@ -303,7 +331,7 @@ func login_user(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Database error", http.StatusInternalServerError)
 				return
 			}
-			
+
 		}
 
 		if existingPass < 1 {
@@ -311,23 +339,33 @@ func login_user(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
+
+		var userId int
+		err = db.QueryRow("SELECT id FROM users WHERE email = ?", email).Scan(&userId)
+		if err != nil {
+			panic(err)
+		}
+
+		// to delete
+		fmt.Println(userId)
+
 		cooke := http.Cookie{
-				Name:     "token",
-				Value:    generateToken(email),
-				Expires:  time.Now().Add(24 * time.Hour),
-				HttpOnly: true,
-			}
-			http.SetCookie(w, &cooke)
+			Name:     "token",
+			Value:    generateToken(userId),
+			Expires:  time.Now().Add(24 * time.Hour),
+			HttpOnly: true,
+		}
+		http.SetCookie(w, &cooke)
 
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
 }
 
-func generateToken(userEmail string) string {
+func generateToken(userId int) string {
 	token := jwt.New(jwt.SigningMethodHS256)
 
 	claims := token.Claims.(jwt.MapClaims)
-	claims["user_email"] = userEmail
+	claims["user_id"] = userId
 	claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
 
 	tokenString, err := token.SignedString([]byte(secretKey))
