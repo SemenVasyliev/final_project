@@ -17,6 +17,7 @@ type Article struct {
 	Id                                    int
 	Title, Description, ArticleText, Tags string
 	Comments                              []Comment
+	UserId                                int
 }
 
 type User struct {
@@ -393,9 +394,20 @@ func handleFunc() {
 	rtr.HandleFunc("/save_user", save_user).Methods("POST")
 	rtr.HandleFunc("/login_user", login_user).Methods("POST")
 	rtr.HandleFunc("/add_comment", addComment).Methods("POST")
+	rtr.HandleFunc("/logout", logout).Methods("POST")
 
 	http.ListenAndServe(":8081", nil)
 
+}
+
+func logout(w http.ResponseWriter, r *http.Request) {
+	cookie := &http.Cookie{
+		Name:   "token",
+		Value:  "",
+		MaxAge: -1,
+	}
+	http.SetCookie(w, cookie)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func main() {

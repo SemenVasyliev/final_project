@@ -135,11 +135,9 @@
           <li class="nav-item">
             <a class="nav-link" href="/create">Add article</a>         
         </ul> 
-        <ul class="navbar-nav ml-auto">
-          <li class="nav-item">
-            <a class="nav-link" href="/logout">Logout</a>
-          </li>
-        </ul>    
+        <form action="/logout" method="POST">
+            <button class="btn btn-warning" style="margin-left: 10px;">Logout</button>
+          </form>        
       </div>
     </div>
   </nav>
