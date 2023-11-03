@@ -1,0 +1,18 @@
+{{ define "show_my_article" }}
+{{ template "header_for_auth" }}
+
+    <h1>My Articles</h1>
+
+    <ul>
+        {{ range .Articles }}
+            <li>
+                <h2>{{ .Title }}</h2>
+                <p>{{ .Description }}</p>
+                <p>Created At: {{ .CreatedAt }}</p>
+                <!-- Добавьте дополнительную информацию о статьях, если необходимо -->
+            </li>
+        {{ end }}
+    </ul>
+
+    <a href="/">Back to Home</a>
+{{ end }}

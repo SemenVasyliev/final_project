@@ -154,7 +154,7 @@ func save_article(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(userId)
 	// if !ok {
 	// 	// Обработка ошибки, если UserId не является int
-	// 	fmt.Fprintf(w, "Latif")
+	// 	fmt.Fprintf(w, "errr")
 	// 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 	// 	return
 	// }
@@ -350,8 +350,6 @@ func login_user(w http.ResponseWriter, r *http.Request) {
 			panic(err)
 		}
 
-		// to delete
-		fmt.Println(userId)
 
 		cooke := http.Cookie{
 			Name:     "token",
@@ -363,6 +361,81 @@ func login_user(w http.ResponseWriter, r *http.Request) {
 
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
+}
+
+func show_my_article(w http.ResponseWriter, r *http.Request) {
+
+	// if !CheckAuthentication(extractTokenFromRequest(r)) {
+	// 	// Пользователь не авторизован, перенаправьте его на страницу входа
+	// 	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	// 	return
+	// }
+
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		// Обработка ошибки, если токен отсутствует
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	t, err := template.ParseFiles("templates/show_my_article.html", "templates/header_for_auth.html", "templates/footer.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	tokenString := cookie.Value
+	claims, err := checkToken(tokenString)
+	if err != nil {
+		// Обработка ошибки валидации токена
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	userId, _ := claims["user_id"].(float64)
+	fmt.Println("User id:")
+	fmt.Println(userId)
+	// if !ok {
+	// 	// Обработка ошибки, если UserId не является int
+	// 	fmt.Fprintf(w, "errr")
+	// 	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	// 	return
+	// }
+	intUserId := int(userId)
+
+	db, err := sql.Open("mysql", "root:220203ctyz@tcp(127.0.0.1:3306)/news")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT * FROM articles WHERE UserId = ?", intUserId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var articles []ArticleWithAuthor
+	// Пройдитесь по результатам запроса и добавьте артикли в слайс
+	for rows.Next() {
+		var article ArticleWithAuthor
+		err = rows.Scan(&article.Id, &article.Title, &article.Description, &article.ArticleText, &article.Tags, &article.UserId, &article.CreatedAt)
+		if err != nil {
+			panic(err)
+		}
+		articles = append(articles, article)
+	}
+
+	data := struct {
+		IsAuthenticated bool
+		Articles        []ArticleWithAuthor
+	}{
+		IsAuthenticated: true, // Пользователь авторизован
+		Articles:        articles,
+	}
+	t.ExecuteTemplate(w, "show_my_article", data)
 }
 
 func generateToken(userId int) string {
@@ -463,6 +536,7 @@ func handleFunc() {
 	rtr.HandleFunc("/login_user", login_user).Methods("POST")
 	rtr.HandleFunc("/add_comment", addComment).Methods("POST")
 	rtr.HandleFunc("/logout", logout).Methods("POST")
+	rtr.HandleFunc("/show_my_article", show_my_article).Methods("GET")
 
 	http.ListenAndServe(":8081", nil)
 
